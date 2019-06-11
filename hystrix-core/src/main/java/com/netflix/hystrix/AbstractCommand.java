@@ -163,6 +163,7 @@ import java.util.concurrent.atomic.AtomicReference;
         this.commandKey = initCommandKey(key, getClass());
         this.properties = initCommandProperties(this.commandKey, propertiesStrategy, commandPropertiesDefaults);
         this.threadPoolKey = initThreadPoolKey(threadPoolKey, this.commandGroup, this.properties.executionIsolationThreadPoolKeyOverride().get());
+        // @ovo@ 初始化command metrics
         this.metrics = initMetrics(metrics, this.commandGroup, this.threadPoolKey, this.commandKey, this.properties);
         this.circuitBreaker = initCircuitBreaker(this.properties.circuitBreakerEnabled().get(), circuitBreaker, this.commandGroup, this.commandKey, this.properties, this.metrics);
         this.threadPool = initThreadPool(threadPool, this.threadPoolKey, threadPoolPropertiesDefaults);
@@ -522,12 +523,14 @@ import java.util.concurrent.atomic.AtomicReference;
 
         /* determine if we're allowed to execute */
         if (circuitBreaker.attemptExecution()) {
+            // @ovo@ 获取信号量
             final TryableSemaphore executionSemaphore = getExecutionSemaphore();
             final AtomicBoolean semaphoreHasBeenReleased = new AtomicBoolean(false);
             final Action0 singleSemaphoreRelease = new Action0() {
                 @Override
                 public void call() {
                     if (semaphoreHasBeenReleased.compareAndSet(false, true)) {
+                        // @ovo@ 释放信号量
                         executionSemaphore.release();
                     }
                 }
@@ -555,6 +558,7 @@ import java.util.concurrent.atomic.AtomicReference;
                 return handleSemaphoreRejectionViaFallback();
             }
         } else {
+            // @ovo@ 链路处于熔断状态
             return handleShortCircuitViaFallback();
         }
     }
@@ -585,7 +589,7 @@ import java.util.concurrent.atomic.AtomicReference;
                 }
             }
         };
-
+        
         final Action0 markOnCompleted = new Action0() {
             @Override
             public void call() {
@@ -599,6 +603,7 @@ import java.util.concurrent.atomic.AtomicReference;
             }
         };
 
+        // @ovo@ 失败回退逻辑
         final Func1<Throwable, Observable<R>> handleFallback = new Func1<Throwable, Observable<R>>() {
             @Override
             public Observable<R> call(Throwable t) {
@@ -625,6 +630,7 @@ import java.util.concurrent.atomic.AtomicReference;
             }
         };
 
+        // @ovo@ 请求缓存
         final Action1<Notification<? super R>> setRequestContext = new Action1<Notification<? super R>>() {
             @Override
             public void call(Notification<? super R> rNotification) {
@@ -647,6 +653,7 @@ import java.util.concurrent.atomic.AtomicReference;
     }
 
     private Observable<R> executeCommandWithSpecifiedIsolation(final AbstractCommand<R> _cmd) {
+        // @ovo@ 线程隔离
         if (properties.executionIsolationStrategy().get() == ExecutionIsolationStrategy.THREAD) {
             // mark that we are executing in a thread (even if we end up being rejected we still were a THREAD execution and not SEMAPHORE)
             return Observable.defer(new Func0<Observable<R>>() {
@@ -659,6 +666,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
                     metrics.markCommandStart(commandKey, threadPoolKey, ExecutionIsolationStrategy.THREAD);
 
+                    // @ovo@ 执行超时
                     if (isCommandTimedOut.get() == TimedOutStatus.TIMED_OUT) {
                         // the command timed out in the wrapping thread so we will return immediately
                         // and not increment any of the counters below or other such logic
@@ -715,7 +723,7 @@ import java.util.concurrent.atomic.AtomicReference;
                     return properties.executionIsolationThreadInterruptOnTimeout().get() && _cmd.isCommandTimedOut.get() == TimedOutStatus.TIMED_OUT;
                 }
             }));
-        } else {
+        } else { // @ovo@ 信号量隔离
             return Observable.defer(new Func0<Observable<R>>() {
                 @Override
                 public Observable<R> call() {
@@ -1270,6 +1278,7 @@ import java.util.concurrent.atomic.AtomicReference;
             }
         } else {
             // return NoOp implementation since we're not using SEMAPHORE isolation
+            // @ovo@ 不是使用信号量隔离, 而是线程隔离
             return TryableSemaphoreNoOp.DEFAULT;
         }
     }

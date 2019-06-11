@@ -15,12 +15,6 @@
  */
 package com.netflix.hystrix.examples.demo;
 
-import java.math.BigDecimal;
-import java.net.HttpCookie;
-import java.util.Random;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
-
 import com.netflix.config.ConfigurationManager;
 import com.netflix.hystrix.HystrixCommandKey;
 import com.netflix.hystrix.HystrixCommandMetrics;
@@ -31,20 +25,25 @@ import com.netflix.hystrix.strategy.concurrency.HystrixRequestContext;
 import rx.Observable;
 import rx.Subscriber;
 import rx.functions.Action0;
-import rx.functions.Action1;
 import rx.functions.Func1;
 import rx.functions.Func2;
 import rx.plugins.RxJavaPlugins;
 import rx.plugins.RxJavaSchedulersHook;
+
+import java.math.BigDecimal;
+import java.net.HttpCookie;
+import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Executable client that demonstrates the lifecycle, metrics, request log and behavior of HystrixCommands.
  */
 public class HystrixCommandAsyncDemo {
 
-//    public static void main(String args[]) {
-//        new HystrixCommandAsyncDemo().startDemo(true);
-//    }
+   public static void main(String args[]) {
+       new HystrixCommandAsyncDemo().startDemo(true);
+   }
 
     static class ContextAwareRxSchedulersHook extends RxJavaSchedulersHook {
         @Override
